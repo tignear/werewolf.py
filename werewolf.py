@@ -51,7 +51,7 @@ class DayActionPlayer(ActionPlater):
         self.__vote=False
     def voteKill(self):
         self.__vote==True
-        def action(self):
+    def action(self):
             if self.__vote:
                 self.player.kill()
 class NightActionPlayer(ActionPlater):
