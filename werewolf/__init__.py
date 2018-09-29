@@ -81,25 +81,8 @@ class GameWinner(Enum):
     NONE=auto()
     WOLF=auto()
     VILLAGER=auto()
-class GameEventType(Enum):
-    DIE_PLAYER=auto()
-    GAME_COMPLETE=auto()
-    TIME=auto()
-class GameEvent:
-    def __init__(self,kind,game):
-        self.__kind=kind
-        self.__game=game
-    @property
-    def kind(self):
-        return self.__kind
-    @property
-    def game(self):
-        return self.__game
-class GameEventDiePlayer(GameEvent):
-    def __init__(self,kind,game):
-        super().__init__(kind,game)
 class Game:
-    def __init__(self,players,settings):
+    def __init__(self,players,settings={}):
         """constructor
         
         Parameters
@@ -107,9 +90,14 @@ class Game:
         players : {Player}
         settings: {str:any}
         """
-        self.__player=copy(players)
+        self.__players=copy(players)
         self.__livePlayers=copy(players)
-
+    @property
+    def players(self):
+        return frozenset(self.__players)
+    @property
+    def livePlayers(self):
+        return frozenset(self.__livePlayers)
     async def day(self,actPlayer):
         """require overriding
         
@@ -131,7 +119,10 @@ class Game:
         """
         pass
     def __updateLivePlayer(self):
-        self.__livePlayers&=filter(lambda x:x.live,self.__livePlayers)
+        newLivePlayer=filter(lambda x:x.live,self.__livePlayers)
+        diedPlayer=self.__livePlayers-newLivePlayer
+        self.__players=newLivePlayer
+        self.playerDied(diedPlayer)
     def __checkComplete(self):
         playerCount=len(self.__livePlayers)
         wolfCampCount=len(set(filter(lambda x:x.player.role in SET_OF_WOLF_COUNT_IN,self.__livePlayers)))
@@ -147,13 +138,15 @@ class Game:
             e.action()
         self.__updateLivePlayer()
         return self.__checkComplete()
+    async def playerDied(self,setOfDiedPlayer):
+        pass
     async def turn(self):
-        dayactP=set(map(lambda x:DayActionPlayer(x),self.__livePlayers))
+        dayactP=frozenset(map(lambda x:DayActionPlayer(x),self.__livePlayers))
         await self.day(dayactP)
         winner=self.action(dayactP)
         if winner!=None:
             return winner
-        nightactP=set(map(lambda x:NightActionPlayer(x),self.__livePlayers))
+        nightactP=frozenset(map(lambda x:NightActionPlayer(x),self.__livePlayers))
         await self.night(nightactP)
         winner=self.action(nightactP)
         if winner!=None:
